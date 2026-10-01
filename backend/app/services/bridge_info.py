@@ -1,8 +1,14 @@
-"""桥梁档案业务规则：状态流转、字段校验与筛选口径都收在这里。"""
+"""桥梁档案业务规则。
+
+管养处置（设置限载/安排加固/启动重建）仍在本服务内；登记、审定、发布与版本
+快照锁统一走 :class:`app.services.bridge_review.BridgeReviewService`，
+路由层不做业务判断。
+"""
 from __future__ import annotations
 
 from typing import Any
 
+from app.services.bridge_review import ReviewError, review_service
 from app.store import store
 
 MODULE = "bridge_info"
@@ -13,49 +19,42 @@ NEGATIVE_ACTIONS = []
 
 
 class BridgeInfoService:
+    # -- 审定侧只读/写入全部委托给 review_service --------------------------
     def list_entries(
         self,
         *,
         keyword: str | None = None,
-        status: str | None = None,
+        review_status: str | None = None,
         page: int = 1,
         size: int = 20,
     ) -> tuple[list[dict[str, Any]], int]:
-        rows = store.rows(MODULE)
-        if keyword:
-            rows = [row for row in rows if keyword in str(row.get("桥梁编号", ""))]
-        if status:
-            rows = [row for row in rows if row.get("status") == status]
-        total = len(rows)
-        start = max(page - 1, 0) * size
-        return rows[start:start + size], total
+        return review_service.list_archives(
+            keyword=keyword, review_status=review_status, page=page, size=size
+        )
 
-    def get_entry(self, entry_id: int) -> dict[str, Any] | None:
-        return store.find(MODULE, entry_id)
+    def get_entry(self, entry_id: int) -> dict[str, Any]:
+        return review_service.version_view(entry_id)
 
-    def create_entry(self, values: dict[str, Any]) -> tuple[dict[str, Any] | None, list[str]]:
-        missing = [field for field in REQUIRED_FIELDS if not str(values.get(field) or "").strip()]
-        if missing:
-            return None, missing
-        rows = store.rows(MODULE)
-        entry = {"id": max((int(row.get("id", 0)) for row in rows), default=0) + 1}
-        entry.update({field: values.get(field) for field in REQUIRED_FIELDS})
-        entry["status"] = STATUS_ORDER[0]
-        entry["pending"] = True
-        entry["abnormal"] = False
-        rows.append(entry)
-        return entry, []
+    def create_entry(self, values: dict[str, Any], *, idem_key: str | None = None) -> tuple[dict[str, Any] | None, str]:
+        view, message = review_service.create_archive(values, idem_key=idem_key)
+        return view, message
 
+    # -- 管养处置动作：不允许越过审定状态机，只能作用在已发布版本上 --------
     def run_action(self, entry_id: int, action: str) -> tuple[dict[str, Any] | None, str]:
-        entry = store.find(MODULE, entry_id)
-        if entry is None:
-            return None, f"桥梁 {entry_id} 不存在或已归档"
-        if action not in ACTION_RULES:
-            return None, f"动作「{action}」不属于桥梁档案可执行范围"
-        target = ACTION_RULES[action]
-        if target not in STATUS_ORDER:
-            return None, f"目标状态「{target}」不在允许的状态序列里"
-        entry["status"] = target
-        entry["pending"] = target != STATUS_ORDER[-1]
-        entry["abnormal"] = action in NEGATIVE_ACTIONS
-        return entry, f"桥梁已{action}"
+        with store.transaction():
+            entry = store.find(MODULE, entry_id)
+            if entry is None:
+                return None, f"桥梁 {entry_id} 不存在或已归档"
+            try:
+                view = review_service.version_view(entry_id)
+            except ReviewError as exc:
+                return None, exc.message
+            if view["审定状态"] != "已发布":
+                return None, f"档案当前为「{view['审定状态']}」，需审定发布后才能{action}"
+            if action not in ACTION_RULES:
+                return None, f"动作「{action}」不属于桥梁档案可执行范围"
+            target = ACTION_RULES[action]
+            entry["status"] = target
+            entry["pending"] = target != STATUS_ORDER[-1]
+            entry["abnormal"] = action in NEGATIVE_ACTIONS
+            return review_service.version_view(entry_id), f"桥梁已{action}"

@@ -19,3 +19,16 @@ export async function fetchJson<T>(path: string): Promise<T> {
   }
   return (await response.json()) as T
 }
+
+/** 从失败响应里取服务端给出的业务原因（状态机拒绝/并发冲突都带中文说明）。 */
+export async function readError(response: Response, fallback: string): Promise<string> {
+  try {
+    const payload = (await response.json()) as { detail?: string | { message?: string } }
+    const detail = payload.detail
+    if (typeof detail === 'string') return detail
+    if (detail?.message) return detail.message
+  } catch {
+    /* 非 JSON 响应时用兜底文案 */
+  }
+  return fallback
+}

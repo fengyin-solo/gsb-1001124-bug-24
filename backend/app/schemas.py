@@ -28,6 +28,14 @@ class EntryPayload(BaseModel):
     remark: str | None = None
 
 
+class BatchReviewPayload(BaseModel):
+    """桥梁档案批量审定：稳定批次号用于断点续传，条目先冻结待审定快照。"""
+
+    batch_no: str
+    items: list[dict[str, Any]] = Field(default_factory=list)
+    values: dict[str, Any] = Field(default_factory=dict)
+
+
 
 class RoadSectionEntry(BaseModel):
     """管养路段明细结构。"""

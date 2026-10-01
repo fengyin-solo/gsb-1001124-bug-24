@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas import ActionResult, EntryPayload, PageResult
 from app.services.bridge import BridgeService
+from app.services.bridge_review import ReviewError, review_service
 
 router = APIRouter(prefix="/api/bridge", tags=["桥梁定检"])
 
@@ -28,6 +29,22 @@ def list_entries(
         raise HTTPException(status_code=400, detail="每页最多 200 条，请缩小分页范围")
     items, total = service.list_entries(keyword=keyword, status=status, page=page, size=size)
     return PageResult(items=items, total=total, page=page, size=size)
+
+
+@router.get("/export")
+def export_entries() -> dict[str, Any]:
+    """导出桥梁定检清单：返回当前过滤条件下的全量数据。"""
+    items, total = service.list_entries(page=1, size=10000)
+    return {"module": "bridge", "total": total, "items": items}
+
+
+@router.get("/{entry_id}/evidence")
+def get_evidence(entry_id: int) -> dict[str, Any]:
+    """证据链复核（定检页入口）：由定检记录反查桥梁档案，与档案明细页同链同口径。"""
+    try:
+        return review_service.evidence_for_inspection(entry_id)
+    except ReviewError as exc:
+        raise HTTPException(status_code=exc.status, detail={"message": exc.message, **exc.extra})
 
 
 @router.get("/{entry_id}", response_model=dict)
@@ -56,10 +73,3 @@ def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
-
-
-@router.get("/export")
-def export_entries() -> dict[str, Any]:
-    """导出桥梁定检清单：返回当前过滤条件下的全量数据。"""
-    items, total = service.list_entries(page=1, size=10000)
-    return {"module": "bridge", "total": total, "items": items}

@@ -33,3 +33,35 @@ body { margin: 0; background: #f6f8fb; color: #1f2937; }
 .link { border: none; background: none; color: var(--brand); cursor: pointer; padding: 0; }
 .page-foot { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .error-text { color: #b42318; }
+.ok-text { color: #067647; }
+
+/* 审定状态徽标 */
+.badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; border: 1px solid var(--border); }
+.badge.pending { background: #fffaeb; color: #b54708; border-color: #fedf89; }
+.badge.approved { background: #eff8ff; color: #175cd3; border-color: #b2ddff; }
+.badge.published { background: #ecfdf3; color: #067647; border-color: #abefc6; }
+.badge.abnormal { background: #fef3f2; color: #b42318; border-color: #fda29b; }
+
+/* 弹窗与抽屉 */
+.modal-mask { position: fixed; inset: 0; background: rgba(16, 24, 40, .45); display: flex; align-items: center; justify-content: center; z-index: 20; }
+.modal-card { background: #fff; border-radius: 10px; width: min(720px, 92vw); max-height: 86vh; overflow: auto; padding: 18px 20px; }
+.modal-card.wide { width: min(960px, 96vw); }
+.modal-title { margin: 0 0 4px; font-size: 16px; }
+.modal-sub { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.form-grid label span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.form-grid input, .form-grid select, .form-grid textarea { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font: inherit; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.kv-list { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 8px 0; }
+.kv-list .kv-row { display: grid; grid-template-columns: 120px 1fr; font-size: 13px; border-bottom: 1px solid var(--border); }
+.kv-list .kv-row:last-child { border-bottom: none; }
+.kv-list .kv-k { background: #f8fafc; padding: 6px 10px; color: var(--muted); }
+.kv-list .kv-v { padding: 6px 10px; }
+.evidence-section { margin-top: 12px; }
+.evidence-section h4 { margin: 0 0 6px; font-size: 13px; }
+.evidence-ok { color: #067647; font-size: 13px; }
+.evidence-bad { color: #b42318; font-size: 13px; }
+.evidence-bad ul { margin: 4px 0 0 18px; padding: 0; }
+.batch-panel { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; background: #fff; font-size: 13px; }
+.row-selected { background: #eff8ff; }
+.muted { color: var(--muted); }
