@@ -1,4 +1,8 @@
-"""桥梁定检接口：维护检测记录，覆盖开始检测、完成评定、归档报告等动作。"""
+"""桥梁定检接口：维护检测记录，覆盖开始检测、完成评定、归档报告等动作。
+
+清单数据受档案版本快照锁约束，只能看到已发布审定版本；
+异常复核与档案明细共用 /api/bridge_info/by-code/{桥梁编号}/evidence 证据链。
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -7,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas import ActionResult, EntryPayload, PageResult
 from app.services.bridge import BridgeService
+from app.services.bridge_approval import approval_service
 
 router = APIRouter(prefix="/api/bridge", tags=["桥梁定检"])
 
@@ -18,15 +23,16 @@ STATUSES = ["待检测", "检测中", "已评定", "已归档"]
 
 @router.get("", response_model=PageResult[dict])
 def list_entries(
-    keyword: str | None = Query(default=None, description="按检测编号检索"),
+    keyword: str | None = Query(default=None, description="按检测编号或桥梁名称检索"),
     status: str | None = Query(default=None, description="待检测、检测中、已评定、已归档"),
+    bridge_code: str | None = Query(default=None, description="按桥梁编号过滤，只返回该档案已发布版本的定检"),
     page: int = 1,
     size: int = 20,
 ) -> PageResult[dict]:
     """按检测编号与状态过滤桥梁定检列表；没有数据时返回空页，不报错。"""
     if size > 200:
         raise HTTPException(status_code=400, detail="每页最多 200 条，请缩小分页范围")
-    items, total = service.list_entries(keyword=keyword, status=status, page=page, size=size)
+    items, total = service.list_entries(keyword=keyword, status=status, bridge_code=bridge_code, page=page, size=size)
     return PageResult(items=items, total=total, page=page, size=size)
 
 
@@ -37,6 +43,12 @@ def get_entry(entry_id: int) -> dict:
     if entry is None:
         raise HTTPException(status_code=404, detail=f"检测记录 {entry_id} 不存在或已归档")
     return entry
+
+
+@router.get("/by-code/{bridge_code}/evidence", response_model=dict)
+def evidence_chain(bridge_code: str) -> dict[str, Any]:
+    """定检页面的证据链入口，与档案明细接口指向同一份复核数据。"""
+    return approval_service.evidence_chain(bridge_code)
 
 
 @router.post("", response_model=ActionResult)

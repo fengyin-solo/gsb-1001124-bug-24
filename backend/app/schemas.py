@@ -28,6 +28,38 @@ class EntryPayload(BaseModel):
     remark: str | None = None
 
 
+class SubmitApprovalPayload(BaseModel):
+    """提交桥梁档案审定：档案字段 + 图面/定检清单/工程待办一起冻结成快照。"""
+
+    values: dict[str, Any] = Field(default_factory=dict)
+    client_token: str | None = None
+
+
+class ApprovePayload(BaseModel):
+    """审定通过：可携带基准版本做乐观校验，结论随档案同事务落库。"""
+
+    conclusion: str = "审定通过"
+    base_version: int | None = None
+    approver: str = "审定人"
+    client_token: str | None = None
+
+
+class PublishPayload(BaseModel):
+    client_token: str | None = None
+
+
+class BatchPreparePayload(BaseModel):
+    """批量审定第一步：整批冻结为待审定快照；断连重试带同一个 batch_token。"""
+
+    archive_ids: list[int] = Field(default_factory=list)
+    payloads: dict[str, Any] = Field(default_factory=dict)
+    batch_token: str | None = None
+
+
+class BatchActionPayload(BaseModel):
+    approver: str = "审定人"
+
+
 
 class RoadSectionEntry(BaseModel):
     """管养路段明细结构。"""
